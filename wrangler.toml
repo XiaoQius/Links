@@ -1,0 +1,15 @@
+name = "blog-crawler"
+compatibility_date = "2025-06-19"
+
+# Pages Functions configuration
+[build]
+command = "npm run build"
+
+# Environment variables (set these in Cloudflare Dashboard)
+# [vars]
+# GEMINI_API_KEY = "your-api-key"
+
+# KV namespace (optional, for caching)
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "your-kv-namespace-id"
