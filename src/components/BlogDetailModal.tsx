@@ -1,7 +1,7 @@
 import React from "react";
 import { CrawledBlog } from "../types";
 import { getHostname } from "../utils";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { X, ExternalLink, Copy, Calendar, ShieldCheck, Heart, Radio, Link as LinkIcon, FileText } from "lucide-react";
 
 interface BlogDetailModalProps {
