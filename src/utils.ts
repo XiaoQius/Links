@@ -26,8 +26,8 @@ export function normalizeUrl(urlStr: string): string {
     const urlObj = new URL(clean);
     urlObj.hash = "";
     // Remove query params that are just marketing trackings
-    const searchParams = new Array(...urlObj.searchParams.keys());
-    searchParams.forEach(p => {
+    const paramKeys = Array.from(urlObj.searchParams.keys());
+    paramKeys.forEach(p => {
       if (p.startsWith("utm_") || p === "spm" || p === "ref") {
         urlObj.searchParams.delete(p);
       }

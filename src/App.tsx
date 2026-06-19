@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { 
   Play, Pause, RotateCcw, Search, Download, Database, Cpu, 
-  Terminal, ArrowRight, HelpCircle, Radio, FileSpreadsheet, 
-  Compass, Share2, Network, Sparkles, Filter, Globe, AlertTriangle, 
-  CheckCircle2, ChevronRight, Copy, Save, History, Trash2, HelpCircle as HelpIcon,
-  TrendingUp, Layers, Settings2, BarChart2, ShieldCheck, Heart, Clock, ExternalLink, Plus,
+  Terminal, ArrowRight, HelpCircle as HelpIcon, Radio, FileSpreadsheet, 
+  Compass, Network, Sparkles, Filter, Globe, AlertTriangle, 
+  ChevronRight, Copy, Save, History, Trash2,
+  Layers, BarChart2, ShieldCheck, Heart, Clock, ExternalLink,
   Sliders, X, Settings
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -118,8 +118,8 @@ export default function App() {
     return {
       apiType: 'gemini' as 'gemini' | 'openai',
       apiKey: '',
-      baseUrl: 'https://api.google.com/v1',
-      modelName: 'gemini-3.5-flash',
+      baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+      modelName: 'gemini-2.0-flash',
       customPromptPreset: ''
     };
   });
@@ -1122,7 +1122,7 @@ export default function App() {
                 <span>任务执行上限: {blogs.filter(b => b.status === "success" || b.status === "failed").length} / {settings.maxSites} 站点</span>
                 <span>深度模式: {settings.maxDepth === -1 ? "无尽层级" : `${settings.maxDepth}级递归`} &middot; 队列残留: {queueDisplayCount} 节点</span>
               </div>
-              <div className="w-full bg-slate-100 dark:bg-slate-850 h-2 rounded-full overflow-hidden border border-slate-200/40 dark:border-slate-800">
+              <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-200/40 dark:border-slate-800">
                 <div 
                   className="bg-indigo-600 h-full rounded-full transition-all duration-300"
                   style={{ 
@@ -1133,7 +1133,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 self-stretch md:self-auto shrink-0 border-t md:border-t-0 border-slate-100 dark:border-slate-850 pt-3 md:pt-0">
+          <div className="flex flex-wrap items-center gap-2 self-stretch md:self-auto shrink-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800 pt-3 md:pt-0">
             {/* Control Actions buttons */}
             {crawlStatus === 'idle' || crawlStatus === 'completed' || crawlStatus === 'stopped' ? (
               <button
@@ -1192,7 +1192,7 @@ export default function App() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setIsSettingsOpen(false)}
-                className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs cursor-pointer"
+                className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-sm cursor-pointer"
               />
               
               {/* Drawer Container */}
@@ -1204,10 +1204,10 @@ export default function App() {
                 className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-[460px] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col h-full overflow-hidden"
               >
                 {/* Header block */}
-                <div className="p-5 border-b border-slate-150 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-950/40 shrink-0">
+                <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-950/40 shrink-0">
                   <div className="flex items-center gap-2">
                     <Sliders className="w-4 h-4 text-indigo-500" />
-                    <h3 className="text-xs uppercase font-extrabold tracking-wider text-slate-600 dark:text-slate-350">
+                    <h3 className="text-xs uppercase font-extrabold tracking-wider text-slate-600 dark:text-slate-300">
                       分析仪参数及规则配置
                     </h3>
                   </div>
@@ -1235,11 +1235,11 @@ export default function App() {
                       onChange={(e) => setSeedsInput(e.target.value)}
                       placeholder="每行一个有效 URL (例如: https://tualatrix.github.io)"
                       disabled={crawlStatus === 'running' || crawlStatus === 'paused'}
-                      className="w-full h-24 px-3 py-2 text-xs font-mono border border-slate-205 dark:border-slate-850 rounded-xl bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/15 text-slate-800 dark:text-slate-100 leading-relaxed placeholder-slate-400"
+                      className="w-full h-24 px-3 py-2 text-xs font-mono border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/15 text-slate-800 dark:text-slate-100 leading-relaxed placeholder-slate-400"
                     />
 
                     {/* Preconfigured Preset Seed button array */}
-                    <div className="space-y-1 bg-slate-50 dark:bg-slate-950/30 p-2.5 rounded-xl border border-slate-100 dark:border-slate-850/80 mt-1">
+                    <div className="space-y-1 bg-slate-50 dark:bg-slate-950/30 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 mt-1">
                       <span className="text-[8.5px] uppercase font-mono tracking-wider text-slate-400 block mb-1">
                         ⚡ 一键载入预设主题种子包 (Quick Preset Seeds)
                       </span>
@@ -1303,7 +1303,7 @@ export default function App() {
                   </div>
 
                   {/* Range Slider for custom Depth N with Infinite option */}
-                  <div className="space-y-2.5 p-4 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-slate-100 dark:border-slate-850">
+                  <div className="space-y-2.5 p-4 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-slate-100 dark:border-slate-800">
                     <div className="flex justify-between items-center">
                       <label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">
                         递进爬取层级 (N级关系)
@@ -1360,7 +1360,7 @@ export default function App() {
                         value={settings.maxSites}
                         onChange={(e) => setSettings({ ...settings, maxSites: Math.max(5, parseInt(e.target.value) || 5) })}
                         disabled={crawlStatus === 'running' || crawlStatus === 'paused'}
-                        className="w-full p-2.5 pr-10 border border-slate-200 dark:border-slate-850 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-mono font-bold focus:outline-none"
+                        className="w-full p-2.5 pr-10 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-mono font-bold focus:outline-none"
                       />
                       <span className="absolute right-3 top-3 text-[10px] text-slate-400 select-none font-bold">个站</span>
                     </div>
@@ -1379,7 +1379,7 @@ export default function App() {
                         value={settings.concurrency}
                         onChange={(e) => setSettings({ ...settings, concurrency: parseInt(e.target.value) })}
                         disabled={crawlStatus === 'running' || crawlStatus === 'paused'}
-                        className="w-full p-2.5 border border-slate-200 dark:border-slate-850 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 focus:outline-none"
+                        className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 focus:outline-none"
                       >
                         <option value="1">1 (温和排查)</option>
                         <option value="2">2 (默认兼顾)</option>
@@ -1396,7 +1396,7 @@ export default function App() {
                         value={settings.timeout}
                         onChange={(e) => setSettings({ ...settings, timeout: parseInt(e.target.value) })}
                         disabled={crawlStatus === 'running' || crawlStatus === 'paused'}
-                        className="w-full p-2.5 border border-slate-200 dark:border-slate-850 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 focus:outline-none"
+                        className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 focus:outline-none"
                       >
                         <option value="5000">5 秒 (极速过滤)</option>
                         <option value="8500">8.5 秒 (业界推荐)</option>
@@ -1428,7 +1428,7 @@ export default function App() {
                       onChange={(e) => setSettings({ ...settings, excludeDomains: e.target.value })}
                       placeholder="用逗号或空格隔开。例如: google.com, weibo.com, github.com"
                       rows={4}
-                      className="w-full px-3 py-2 text-[10.5px] font-mono border border-slate-200 dark:border-slate-850 rounded-xl bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/15 text-slate-800 dark:text-slate-100"
+                      className="w-full px-3 py-2 text-[10.5px] font-mono border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/15 text-slate-800 dark:text-slate-100"
                     />
                     <span className="text-[9.5px] text-slate-400 block leading-tight">
                       排除大型公共枢纽、高暴露商业平台和社交平台，使得漫游拓扑图纯净化、只锁定独立博客好友生态。
@@ -1457,7 +1457,7 @@ export default function App() {
                       onChange={(e) => setSettings({ ...settings, excludeKeywords: e.target.value })}
                       placeholder="用逗号或空格隔开。例如: 推广, 网赚, 兼职, 广告, 菠菜"
                       rows={3}
-                      className="w-full px-3 py-2 text-[10.5px] font-mono border border-slate-200 dark:border-slate-850 rounded-xl bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/15 text-slate-800 dark:text-slate-100"
+                      className="w-full px-3 py-2 text-[10.5px] font-mono border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/15 text-slate-800 dark:text-slate-100"
                     />
                     <span className="text-[9.5px] text-slate-400 block leading-tight">
                       若探查出的独立博客网站标题（或Meta描述）中含有以上屏蔽字，将被一并排除、终止其深度演化生成，防止被广告或商业推广垃圾反噬。
@@ -1481,7 +1481,7 @@ export default function App() {
                 </div>
 
                 {/* Footer bar */}
-                <div className="p-4 border-t border-slate-150 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/30 flex justify-end shrink-0">
+                <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/30 flex justify-end shrink-0">
                   <button
                     onClick={() => setIsSettingsOpen(false)}
                     className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
@@ -1527,7 +1527,7 @@ export default function App() {
                 </button>
               </div>
             ) : (
-              <div className="mt-2 p-3.5 bg-slate-100/50 dark:bg-slate-950/20 border border-dashed border-slate-200 dark:border-slate-850 rounded-xl text-center">
+              <div className="mt-2 p-3.5 bg-slate-100/50 dark:bg-slate-950/20 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-center">
                 <span className="text-[10.5px] text-slate-400 dark:text-slate-550 font-medium leading-relaxed block">
                   收集到博客节点后即可解锁一键持久化归档功能
                 </span>
@@ -1666,7 +1666,7 @@ export default function App() {
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden min-h-[400px] transition-colors">
           
           {/* Tab buttons header bar */}
-          <div className="border-b border-slate-200 dark:border-slate-850 px-5 bg-slate-50 dark:bg-slate-950/40 flex flex-wrap justify-between items-center gap-4 transition-colors">
+          <div className="border-b border-slate-200 dark:border-slate-800 px-5 bg-slate-50 dark:bg-slate-950/40 flex flex-wrap justify-between items-center gap-4 transition-colors">
             <div className="flex gap-1 overflow-x-auto py-3 shrink-0">
               <button
                 onClick={() => setActiveTab("table")}
@@ -1861,7 +1861,7 @@ export default function App() {
                   <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 transition-colors">
                   <div className="overflow-x-auto max-h-[640px] overflow-y-auto relative scrollbar-thin">
                     <table className="w-full text-left border-collapse text-xs">
-                      <thead className="sticky top-0 z-10 shadow-xs">
+                      <thead className="sticky top-0 z-10 shadow-sm">
                         <tr className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold select-none">
                           <th className="p-3 w-12 text-center sticky top-0 bg-slate-50 dark:bg-slate-950 z-10">序列</th>
                           <th className="p-3 sticky top-0 bg-slate-50 dark:bg-slate-950 z-10">主客站点名称 (推荐文案 / 域名)</th>
@@ -1893,7 +1893,7 @@ export default function App() {
                             return (
                               <tr 
                                 key={blog.id} 
-                                className="border-b last:border-0 border-slate-100 dark:border-slate-850 hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-colors"
+                                className="border-b last:border-0 border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-colors"
                               >
                                 <td className="p-3 text-center font-mono text-slate-400">{idx + 1}</td>
                                 <td className="p-3 max-w-[200px]">
@@ -2017,7 +2017,7 @@ export default function App() {
                 <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 transition-colors">
                   <div className="overflow-x-auto max-h-[640px] overflow-y-auto relative scrollbar-thin">
                     <table className="w-full text-left border-collapse text-xs">
-                      <thead className="sticky top-0 z-10 shadow-xs">
+                      <thead className="sticky top-0 z-10 shadow-sm">
                         <tr className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold select-none">
                           <th className="p-3 w-12 text-center sticky top-0 bg-slate-50 dark:bg-slate-950 z-10 font-bold">排行</th>
                           <th className="p-3 sticky top-0 bg-slate-50 dark:bg-slate-950 z-10 font-bold">
@@ -2047,7 +2047,7 @@ export default function App() {
                             return (
                               <tr 
                                 key={group.key}
-                                className="border-b last:border-0 border-slate-100 dark:border-slate-850 hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-colors"
+                                className="border-b last:border-0 border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-colors"
                               >
                                 <td className="p-3 text-center font-mono font-bold text-slate-400">{idx + 1}</td>
                                 <td className="p-3">
@@ -2061,7 +2061,7 @@ export default function App() {
                                       </span>
                                     )}
                                     {aggregationType === "tld" && (
-                                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-400 font-mono font-bold">
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 font-mono font-bold">
                                         后缀拓扑
                                       </span>
                                     )}
@@ -2100,7 +2100,7 @@ export default function App() {
                                       setAggregationType("none");
                                       addLog(`🔍 自适应探索筛选：已定位到 ${group.name} 的对应子集`, "info");
                                     }}
-                                    className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-850 hover:bg-indigo-500 hover:text-white dark:hover:bg-indigo-500 font-bold text-[10.5px] transition-colors cursor-pointer border border-transparent"
+                                    className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-500 hover:text-white dark:hover:bg-indigo-500 font-bold text-[10.5px] transition-colors cursor-pointer border border-transparent"
                                   >
                                     透视下属域名 →
                                   </button>
@@ -2232,7 +2232,7 @@ export default function App() {
                             value={aiApiConfig.apiKey}
                             onChange={(e) => setAiApiConfig({ ...aiApiConfig, apiKey: e.target.value })}
                             placeholder="填入您的授权 Token 或密钥 (服务器端代理请求，保障安全)"
-                            className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-xs text-slate-805 dark:text-slate-150 focus:ring-2 focus:ring-indigo-500/15 focus:outline-none transition-all font-mono"
+                            className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500/15 focus:outline-none transition-all font-mono"
                           />
                         </div>
                       </div>
@@ -2277,9 +2277,13 @@ export default function App() {
                     {aiReport && (
                       <button
                         onClick={() => {
-                          navigator.clipboard.writeText(aiReport);
-                          alert("AI 诊断报告已全文本成功拷贝！");
-                        }}
+                    if (!aiReport) return;
+                    navigator.clipboard?.writeText(aiReport);
+                    setCustomAlert({
+                      title: "复制成功",
+                      message: "AI 诊断报告已复制到剪贴板。"
+                    });
+                  }}
                         className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-bold"
                       >
                         复制全文报告
@@ -2366,7 +2370,7 @@ export default function App() {
                       快照将所有已发现站点列表、RSS 提取、层级关系及运行日志打包封箱，您可以随时一键加载复原。
                     </p>
                   </div>
-                  <span className="text-xs bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-slate-500 dark:text-slate-450 font-bold rounded-lg font-mono">
+                  <span className="text-xs bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-slate-500 dark:text-slate-400 font-bold rounded-lg font-mono">
                     总快照数量: {historySessions.length}
                   </span>
                 </div>
@@ -2384,7 +2388,7 @@ export default function App() {
                     {historySessions.map((session) => (
                       <div
                         key={session.id}
-                        className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-white dark:bg-slate-900 shadow-xs hover:shadow-md hover:border-indigo-500/20 transition-all flex flex-col justify-between"
+                        className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md hover:border-indigo-500/20 transition-all flex flex-col justify-between"
                       >
                         <div>
                           <div className="flex justify-between items-start gap-2">
@@ -2425,10 +2429,10 @@ export default function App() {
                           </div>
                         </div>
 
-                        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-850">
+                        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
                           <button
                             onClick={() => restoreHistory(session)}
-                            className="w-full py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-600 dark:hover:bg-indigo-600 hover:text-white dark:hover:text-white text-slate-700 dark:text-slate-350 text-xs font-bold rounded-lg transition-all cursor-pointer text-center outline-none"
+                            className="w-full py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-600 dark:hover:bg-indigo-600 hover:text-white dark:hover:text-white text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg transition-all cursor-pointer text-center outline-none"
                           >
                             📂 读取并恢复此快照 (装载数据)
                           </button>
@@ -2446,7 +2450,7 @@ export default function App() {
       </main>
 
       {/* FOOTER BAR */}
-      <footer className="border-t border-slate-200 dark:border-slate-850 mt-12 py-8 bg-white dark:bg-slate-900 text-center text-xs text-slate-400 transition-colors">
+      <footer className="border-t border-slate-200 dark:border-slate-800 mt-12 py-8 bg-white dark:bg-slate-900 text-center text-xs text-slate-400 transition-colors">
         <p className="font-bold text-slate-600 dark:text-slate-400">独立友情宇宙 · 递进链接星轨探测程序</p>
         <p className="mt-1.5 text-[11px] text-slate-400 font-mono">
           Powered by Express + React with Cheerio RSS pipeline, analyzed by Gemini AI model.
@@ -2470,7 +2474,7 @@ export default function App() {
               animate={{ opacity: 0.6 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowCompareDrawer(false)}
-              className="absolute inset-0 bg-slate-950/80 backdrop-blur-xs cursor-pointer"
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm cursor-pointer"
             />
             
             {/* Drawer body container sliding in from the right */}
@@ -2503,7 +2507,7 @@ export default function App() {
               {/* Drawer inner content scroll */}
               <div className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin">
                 {/* Snapshot Selection and Selector dropdown */}
-                <div className="bg-slate-100/60 dark:bg-slate-955/20 p-4 rounded-xl border border-slate-200/50 dark:border-slate-850/60 space-y-2 text-xs">
+                <div className="bg-slate-100/60 dark:bg-slate-900/20 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/60 space-y-2 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-slate-700 dark:text-slate-300">请选择用于比对的历史快照：</span>
                     {historySessions.length === 0 && (
@@ -2546,13 +2550,13 @@ export default function App() {
                   <div className="space-y-5 animate-fadeIn">
                     {/* Visual Comparison metrics */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-850/60 rounded-xl p-3 text-center">
+                      <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800/60 rounded-xl p-3 text-center">
                         <span className="text-[10px] text-slate-400 font-medium block">历史成功站</span>
                         <span className="text-base font-bold font-mono text-slate-800 dark:text-slate-200 mt-1 block">
                           {comparisonResult.prevTotal}
                         </span>
                       </div>
-                      <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-850/60 rounded-xl p-3 text-center">
+                      <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800/60 rounded-xl p-3 text-center">
                         <span className="text-[10px] text-slate-400 font-medium block">当前成功站</span>
                         <span className="text-base font-bold font-mono text-slate-800 dark:text-slate-200 mt-1 block">
                           {comparisonResult.currTotal}
@@ -2566,7 +2570,7 @@ export default function App() {
                       </div>
                       <div className="bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/15 rounded-xl p-3 text-center">
                         <span className="text-[10px] text-rose-500 font-medium block">断联失效站</span>
-                        <span className="text-base font-bold font-mono text-rose-600 dark:text-rose-450 mt-1 block">
+                        <span className="text-base font-bold font-mono text-rose-600 dark:text-rose-400 mt-1 block">
                           -{comparisonResult.lost.length}
                         </span>
                       </div>
@@ -2585,7 +2589,7 @@ export default function App() {
                             <div className="py-8 text-center text-slate-400 text-[11px]">暂无新增</div>
                           ) : (
                             comparisonResult.added.map(b => (
-                              <div key={b.id} className="p-2 border border-slate-100 dark:border-slate-850 bg-white dark:bg-slate-950/70 rounded-lg text-[10.5px] leading-tight space-y-1">
+                              <div key={b.id} className="p-2 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950/70 rounded-lg text-[10.5px] leading-tight space-y-1">
                                 <div className="font-bold text-slate-800 dark:text-slate-100 truncate" title={b.name}>
                                   {b.name || "（未注册）"}
                                 </div>
@@ -2617,7 +2621,7 @@ export default function App() {
                             <div className="py-8 text-center text-slate-400 text-[11px]">暂无失效</div>
                           ) : (
                             comparisonResult.lost.map(b => (
-                              <div key={b.id} className="p-2 border border-slate-100 dark:border-slate-850 bg-white dark:bg-slate-950/70 rounded-lg text-[10.5px] leading-tight space-y-1">
+                              <div key={b.id} className="p-2 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950/70 rounded-lg text-[10.5px] leading-tight space-y-1">
                                 <div className="font-bold text-slate-700 dark:text-slate-300 truncate" title={b.name}>
                                   {b.name || "（未注册）"}
                                 </div>

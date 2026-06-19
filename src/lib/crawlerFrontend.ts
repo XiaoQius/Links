@@ -65,8 +65,9 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Respons
 }
 
 async function fetchWithProxy(targetUrl: string, timeoutMs: number): Promise<Response> {
-  // Try each proxy with its own timeout
+  // Try each proxy with its own timeout. A non-ok response (e.g. 429, 5xx, 404) is treated as a failed proxy attempt and we move to the next one.
   let lastError: Error | null = null;
+  let lastNonOkResponse: Response | null = null;
 
   for (const proxyBuilder of CORS_PROXIES) {
     const proxyUrl = proxyBuilder(targetUrl);
@@ -75,6 +76,7 @@ async function fetchWithProxy(targetUrl: string, timeoutMs: number): Promise<Res
       if (response.ok) {
         return response;
       }
+      lastNonOkResponse = response;
     } catch (err: any) {
       lastError = err;
       continue;
@@ -85,7 +87,9 @@ async function fetchWithProxy(targetUrl: string, timeoutMs: number): Promise<Res
   try {
     return await fetchWithTimeout(targetUrl, timeoutMs);
   } catch (err: any) {
-    throw lastError || err;
+    if (lastError) throw lastError;
+    if (lastNonOkResponse) return lastNonOkResponse;
+    throw err;
   }
 }
 

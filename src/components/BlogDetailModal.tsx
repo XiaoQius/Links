@@ -197,7 +197,7 @@ export default function BlogDetailModal({ blog, onClose }: BlogDetailModalProps)
                       className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800 rounded-lg p-2.5 flex justify-between items-center text-xs"
                     >
                       <div className="min-w-0 pr-2 space-y-0.5">
-                        <div className="font-semibold text-slate-805 dark:text-slate-205 truncate" title={page.title || page.url}>
+                        <div className="font-semibold text-slate-800 dark:text-slate-200 truncate" title={page.title || page.url}>
                           {page.title || getHostname(page.url)}
                         </div>
                         <div className="text-[10px] text-slate-400 font-mono truncate" title={page.url}>
