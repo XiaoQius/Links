@@ -1,0 +1,6 @@
+{
+  "name": "友情链接爬取与博客探索器",
+  "description": "一个用于递进式爬取友情链接并探索独立博客的工具。支持自定义目标链接、递归抓取、自动提取站点名称、关键词检索和数据导出。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
