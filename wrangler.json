@@ -1,8 +1,0 @@
-{
-  "name": "blog-crawler",
-  "compatibility_date": "2025-06-19",
-  "build": {
-    "command": "npm run build",
-    "output_dir": "dist"
-  }
-}
