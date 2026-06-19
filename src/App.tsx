@@ -11,10 +11,12 @@ import { motion, AnimatePresence } from "motion/react";
 import Markdown from "react-markdown";
 
 import { CrawledBlog, QueueItem, LogEntry, CrawlerSettings, HistoricalCrawl } from "./types";
-import { 
-  DEFAULT_EXCLUDE_DOMAINS, DEFAULT_EXCLUDE_KEYWORDS, normalizeUrl, getHostname, 
+import {
+  DEFAULT_EXCLUDE_DOMAINS, DEFAULT_EXCLUDE_KEYWORDS, normalizeUrl, getHostname,
   exportToCSV, exportToOPML, triggerFileDownload, getPlatformOrDomain, getTLD
 } from "./utils";
+import { crawlPageFrontend } from "./lib/crawlerFrontend";
+import { analyzeBlogs } from "./lib/aiAnalyzer";
 import BlogUniverse from "./components/BlogUniverse";
 import BlogDetailModal from "./components/BlogDetailModal";
 
@@ -290,18 +292,8 @@ export default function App() {
       setBlogs(Object.values(blogsRef.current));
       addLog(`📡 [第 ${item.depth} 层级递进] 正在分析友情链接: ${targetUrl}`, "info");
 
-      // 2. Fire request API
-      const response = await fetch("/api/crawl", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: targetUrl, timeout: settings.timeout })
-      });
-
-      if (!response.ok) {
-        throw new Error(`服务接驳阻断 HTTP ${response.status}`);
-      }
-
-      const result = await response.json();
+      // 2. Fire request directly in frontend (cross-platform compatible)
+      const result = await crawlPageFrontend(targetUrl, settings.timeout);
 
       if ((statusRef.current as string) === 'stopped') {
         // Abandon result if terminated mid-request
@@ -798,16 +790,11 @@ export default function App() {
     const payloadConfig = customConfigOverride || (isCustomAiSettingsOpen ? aiApiConfig : undefined);
 
     try {
-      const response = await fetch("/api/ai-analyze-blogs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          blogs: successBlogs,
-          customConfig: payloadConfig
-        })
-      });
-
-      const data = await response.json();
+      const data = await analyzeBlogs(
+        successBlogs,
+        payloadConfig,
+        undefined
+      );
       if (data.success && data.analysis) {
         setAiReport(data.analysis);
         localStorage.setItem("crawler_ai_report", data.analysis);
