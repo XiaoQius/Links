@@ -1,0 +1,31 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": null,
+  "rewrites": [
+    { "source": "/api/crawl", "destination": "/api/crawl" },
+    { "source": "/api/ai-analyze-blogs", "destination": "/api/ai-analyze-blogs" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Credentials", "value": "true" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,POST" },
+        { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version" }
+      ]
+    }
+  ],
+  "functions": {
+    "api/crawl.ts": {
+      "memory": 512,
+      "maxDuration": 25
+    },
+    "api/ai-analyze-blogs.ts": {
+      "memory": 512,
+      "maxDuration": 30
+    }
+  }
+}
