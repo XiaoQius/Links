@@ -1,33 +1,22 @@
-import tailwindcss from '@tailwindcss/vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
-import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': '/src',
       },
+    },
+    server: {
+      host: true,
+      port: 3000,
     },
     build: {
       outDir: 'dist',
-      assetsDir: 'assets',
-      emptyOutDir: true,
       sourcemap: false,
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            'vendor': ['react', 'react-dom'],
-            'ui': ['lucide-react', 'motion'],
-          }
-        }
-      }
-    },
-    server: {
-      hmr: process.env.DISABLE_HMR !== 'true',
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      emptyOutDir: true,
     },
   };
 });

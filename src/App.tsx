@@ -7,7 +7,7 @@ import {
   TrendingUp, Layers, Settings2, BarChart2, ShieldCheck, Heart, Clock, ExternalLink, Plus,
   Sliders, X, Settings
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import Markdown from "react-markdown";
 
 import { CrawledBlog, QueueItem, LogEntry, CrawlerSettings, HistoricalCrawl } from "./types";

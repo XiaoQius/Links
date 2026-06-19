@@ -1,5 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
-
 export interface AiAnalyzeConfig {
   apiType?: "gemini" | "openai";
   apiKey?: string;
@@ -99,23 +97,46 @@ export async function analyzeBlogs(
 
       return { success: true, analysis: content };
     } else {
-      const apiKeyToUse = customKey || serverGeminiKey || process.env.GEMINI_API_KEY || "";
-      if (!apiKeyToUse || apiKeyToUse === "MY_GEMINI_API_KEY") {
+      const apiKeyToUse = customKey || serverGeminiKey || "";
+      if (!apiKeyToUse) {
         return {
           success: false,
-          message: "服务器内置 Gemini API 密钥未配置。请在左下角 AI 接口设置中开启并在自定义 AI 接口面板中填入您自己的 API Key 进行智能分析。"
+          message: "请在 AI 接口设置中配置 Gemini API Key 以启用智能分析。"
         };
       }
 
-      const model = customConfig?.modelName || "gemini-3.5-flash";
-      const customAi = new GoogleGenAI({ apiKey: apiKeyToUse });
+      const model = customConfig?.modelName || "gemini-1.5-flash";
+      const baseUrl = customConfig?.baseUrl || "https://generativelanguage.googleapis.com/v1beta";
+      const cleanBaseUrl = baseUrl.replace(/\/$/, "");
 
-      const response = await customAi.models.generateContent({
-        model: model,
-        contents: prompt,
-      });
+      const response = await fetch(
+        `${cleanBaseUrl}/models/${model}:generateContent?key=${apiKeyToUse}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: prompt }]
+            }]
+          })
+        }
+      );
 
-      return { success: true, analysis: response.text };
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Gemini API error (HTTP ${response.status}): ${errText}`);
+      }
+
+      const resJson: any = await response.json();
+      const text = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!text) {
+        throw new Error("Gemini API returned empty content.");
+      }
+
+      return { success: true, analysis: text };
     }
   } catch (err: any) {
     return { success: false, message: err.message || "Failed to generate AI analysis report." };

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { CrawledBlog } from "../types";
 import { getHostname } from "../utils";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Compass, Network, Globe, Radio, Star } from "lucide-react";
 
 interface BlogUniverseProps {
