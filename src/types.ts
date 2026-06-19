@@ -23,6 +23,12 @@ export interface CrawledBlog {
   outLinksFriendCount?: number; // Friends discovered count
   occurrences?: number; // Discovery count (number of times linked physically)
   crawledPages?: CrawledPage[]; // Additional subpages crawled under the same host
+  connectivity?: {
+    status: 'unchecked' | 'checking' | 'ok' | 'failed';
+    statusCode?: number;
+    error?: string;
+    checkedTime?: string;
+  };
 }
 
 export interface QueueItem {

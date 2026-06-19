@@ -13,7 +13,8 @@ import Markdown from "react-markdown";
 import { CrawledBlog, QueueItem, LogEntry, CrawlerSettings, HistoricalCrawl } from "./types";
 import { 
   DEFAULT_EXCLUDE_DOMAINS, DEFAULT_EXCLUDE_KEYWORDS, normalizeUrl, getHostname, 
-  exportToCSV, exportToOPML, triggerFileDownload, getPlatformOrDomain, getTLD
+  exportToCSV, exportToOPML, triggerFileDownload, getPlatformOrDomain, getTLD,
+  parseMarkdownTables
 } from "./utils";
 import BlogUniverse from "./components/BlogUniverse";
 import BlogDetailModal from "./components/BlogDetailModal";
@@ -896,6 +897,24 @@ export default function App() {
     addLog(`📄 已成功导出并下载本地对比Markdown报告主体！`, "success");
   };
 
+  // --- AI Parsed Table Memoization & Subtabs ---
+  const aiParsedTables = useMemo(() => {
+    return parseMarkdownTables(aiReport);
+  }, [aiReport]);
+
+  const [aiReportSubTab, setAiReportSubTab] = useState<'table' | 'report'>('table');
+
+  useEffect(() => {
+    if (aiReport) {
+      const parsed = parseMarkdownTables(aiReport);
+      if (parsed && parsed.length > 0) {
+        setAiReportSubTab('table');
+      } else {
+        setAiReportSubTab('report');
+      }
+    }
+  }, [aiReport]);
+
   // --- Data Statistics Computations with Domain Breakdown ---
   const stats = useMemo(() => {
     const total = blogs.length;
@@ -1013,6 +1032,112 @@ export default function App() {
     
     return Object.values(groups).sort((a, b) => b.count - a.count);
   }, [filteredBlogs, aggregationType]);
+
+  // --- Accessibility and Connectivity Checker state ---
+  const [checkingConnectivity, setCheckingConnectivity] = useState(false);
+
+  // Checks a single blog's connectivity
+  const checkBlogConnectivity = async (blogId: string, url: string) => {
+    setBlogs(prev =>
+      prev.map(b =>
+        b.id === blogId
+          ? { ...b, connectivity: { status: 'checking' } }
+          : b
+      )
+    );
+
+    try {
+      const response = await fetch("/api/check-connectivity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+      });
+      const data = await response.json();
+      
+      const newConnectivity = {
+        status: (data.success && data.ok) ? 'ok' as const : 'failed' as const,
+        statusCode: data.statusCode || undefined,
+        error: !data.ok ? (data.error || `HTTP ${data.statusCode || 500}`) : undefined,
+        checkedTime: new Date().toISOString()
+      };
+
+      setBlogs(prev => {
+        const updated = prev.map(b =>
+          b.id === blogId
+            ? { ...b, connectivity: newConnectivity }
+            : b
+        );
+        // Persist to local storage
+        localStorage.setItem("crawler_blogs_data", JSON.stringify(updated));
+        return updated;
+      });
+
+      return data.success && data.ok;
+    } catch (err: any) {
+      const failConnectivity = {
+        status: 'failed' as const,
+        error: err.message || "请求失败",
+        checkedTime: new Date().toISOString()
+      };
+      setBlogs(prev => {
+        const updated = prev.map(b =>
+          b.id === blogId
+            ? { ...b, connectivity: failConnectivity }
+            : b
+        );
+        // Persist to local storage
+        localStorage.setItem("crawler_blogs_data", JSON.stringify(updated));
+        return updated;
+      });
+      return false;
+    }
+  };
+
+  // Batched checking of successful crawled sites
+  const checkAllBlogsConnectivity = async () => {
+    if (checkingConnectivity) return;
+    setCheckingConnectivity(true);
+    addLog("⚡ 启动全站独立博客服务可达性探测，采用 3 并发保活通道逐一探访...", "info");
+
+    const targets = blogs.filter(b => b.status === 'success');
+    if (targets.length === 0) {
+      addLog("⚠️ 当前数据中没有已成功抓取的独立博客站点，无法开展连通性分析！", "warn");
+      setCheckingConnectivity(false);
+      return;
+    }
+
+    const queue = [...targets];
+    const maxConcurrency = 3;
+    let activeWorkers = 0;
+    let finishedCount = 0;
+    let okCount = 0;
+
+    const runNextWorker = async (): Promise<void> => {
+      if (queue.length === 0) return;
+      const item = queue.shift()!;
+      activeWorkers++;
+      try {
+        const isOk = await checkBlogConnectivity(item.id, item.url);
+        if (isOk) okCount++;
+      } catch (e) {}
+      activeWorkers--;
+      finishedCount++;
+      
+      if (queue.length > 0) {
+        return runNextWorker();
+      }
+    };
+
+    const workerPromises = [];
+    const initialWorkersCount = Math.min(maxConcurrency, queue.length);
+    for (let i = 0; i < initialWorkersCount; i++) {
+      workerPromises.push(runNextWorker());
+    }
+    await Promise.all(workerPromises);
+
+    addLog(`✅ 连通率分析圆满结束！共测试 <b>${finishedCount}</b> 个博主空间，经验证其中 <b>${okCount}</b> 个响应灵敏且正常，有 <b>${finishedCount - okCount}</b> 个站点目前无法请求。`, "success");
+    setCheckingConnectivity(false);
+  };
 
   // Export handlers
   const handleExportCSV = () => {
@@ -1680,10 +1805,10 @@ export default function App() {
           
           {/* Tab buttons header bar */}
           <div className="border-b border-slate-200 dark:border-slate-850 px-5 bg-slate-50 dark:bg-slate-950/40 flex flex-wrap justify-between items-center gap-4 transition-colors">
-            <div className="flex gap-1 overflow-x-auto py-3 shrink-0">
+            <div className="flex gap-1 overflow-x-auto py-3 max-w-full scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
               <button
                 onClick={() => setActiveTab("table")}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 transition-all ${
                   activeTab === "table"
                     ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm"
                     : "text-slate-500 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:bg-slate-800/60"
@@ -1695,7 +1820,7 @@ export default function App() {
               
               <button
                 onClick={() => setActiveTab("galaxy")}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 transition-all ${
                   activeTab === "galaxy"
                     ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm"
                     : "text-slate-500 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:bg-slate-800/60"
@@ -1707,7 +1832,7 @@ export default function App() {
 
               <button
                 onClick={() => setActiveTab("ai")}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 transition-all ${
                   activeTab === "ai"
                     ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm"
                     : "text-slate-500 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:bg-slate-800/60"
@@ -1719,7 +1844,7 @@ export default function App() {
 
               <button
                 onClick={() => setActiveTab("logs")}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 transition-all ${
                   activeTab === "logs"
                     ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm"
                     : "text-slate-500 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:bg-slate-800/60"
@@ -1731,7 +1856,7 @@ export default function App() {
 
               <button
                 onClick={() => setActiveTab("history")}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 transition-all ${
                   activeTab === "history"
                     ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm"
                     : "text-slate-500 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:bg-slate-800/60"
@@ -1744,10 +1869,24 @@ export default function App() {
 
             {/* Quick Export toolbar when blogs present */}
             {blogs.length > 0 && activeTab === "table" && (
-              <div className="flex flex-wrap gap-2 text-xs py-2 shrink-0">
+              <div className="flex overflow-x-auto max-w-full scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 gap-2 text-xs py-2 shrink-0">
+                <button
+                  type="button"
+                  disabled={checkingConnectivity}
+                  onClick={checkAllBlogsConnectivity}
+                  className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 transition-all ${
+                    checkingConnectivity
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/40 animate-pulse cursor-not-allowed"
+                      : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/15"
+                  }`}
+                  title="并发探测所有成功抓取的站点在线连通状态"
+                >
+                  <Globe className={`w-3.5 h-3.5 ${checkingConnectivity ? "animate-spin" : ""}`} />
+                  {checkingConnectivity ? "探测全网可达性中..." : "批量测试全网连通性"}
+                </button>
                 <button
                   onClick={handleExportCSV}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-850 text-slate-600 dark:text-slate-300 flex items-center gap-1.5 cursor-pointer transition-colors"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-850 text-slate-600 dark:text-slate-300 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 transition-colors"
                   title="导出 CSV 文件报表"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
@@ -1755,7 +1894,7 @@ export default function App() {
                 </button>
                 <button
                   onClick={handleExportOPML}
-                  className="px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-1.5 cursor-pointer shadow-md shadow-orange-500/10 font-medium transition-all"
+                  className="px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 shadow-md shadow-orange-500/10 font-medium transition-all"
                   title="导出 RSS Feed 聚合 OPML"
                 >
                   <Radio className="w-3.5 h-3.5 animate-pulse" />
@@ -1768,7 +1907,7 @@ export default function App() {
                     }
                     setShowCompareDrawer(true);
                   }}
-                  className="px-3 py-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                  className="px-3 py-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 transition-colors"
                   title="与历史快照数据进行对比分析（查看新增与失效博客）"
                 >
                   <BarChart2 className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
@@ -1776,7 +1915,7 @@ export default function App() {
                 </button>
                 <button
                   onClick={handleExportJSON}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-850 text-slate-500 dark:text-slate-400 transition-colors"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-850 text-slate-500 dark:text-slate-400 whitespace-nowrap shrink-0 transition-colors"
                   title="导出 JSON 原始树结构"
                 >
                   JSON
@@ -1973,23 +2112,57 @@ export default function App() {
                                     阶层 D{blog.depth}
                                   </span>
                                 </td>
-                                <td className="p-3 text-center">
-                                  {isSuccess ? (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">
-                                      抓取完成
-                                    </span>
-                                  ) : isPending ? (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 animate-pulse">
-                                      计划排队
-                                    </span>
-                                  ) : blog.status === "crawling" ? (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500 animate-pulse">
-                                      正在请求
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-500 font-bold" title={blog.errorMessage}>
-                                      阻碍/异常
-                                    </span>
+                                <td className="p-3 text-center space-y-1">
+                                  <div>
+                                    {isSuccess ? (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[10px]">
+                                        抓取完成
+                                      </span>
+                                    ) : isPending ? (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 animate-pulse text-[10px]">
+                                        计划排队
+                                      </span>
+                                    ) : blog.status === "crawling" ? (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500 animate-pulse text-[10px]">
+                                        正在请求
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-500 font-bold text-[10px]" title={blog.errorMessage}>
+                                        阻碍/异常
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {isSuccess && (
+                                    <div className="pt-0.5 flex items-center justify-center">
+                                      {blog.connectivity ? (
+                                        blog.connectivity.status === 'checking' ? (
+                                          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-500 animate-pulse select-none">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                                            探测中...
+                                          </span>
+                                        ) : blog.connectivity.status === 'ok' ? (
+                                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold select-none cursor-default" title={`响应代码: ${blog.connectivity.statusCode || 200}\n检测时间: ${new Date(blog.connectivity.checkedTime || '').toLocaleTimeString()}`}>
+                                            ● 正常
+                                          </span>
+                                        ) : (
+                                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-rose-500/10 text-rose-500 text-[9px] font-bold cursor-help" title={`错误详情: ${blog.connectivity.error || '连接超时'}\n检测时间: ${blog.connectivity.checkedTime ? new Date(blog.connectivity.checkedTime).toLocaleTimeString() : ''}`}>
+                                            ● 无法访问
+                                          </span>
+                                        )
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            checkBlogConnectivity(blog.id, blog.url);
+                                          }}
+                                          className="text-[9px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-bold hover:underline cursor-pointer bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md"
+                                        >
+                                          测试可达性
+                                        </button>
+                                      )}
+                                    </div>
                                   )}
                                 </td>
                                 <td className="p-3 text-center font-mono text-slate-500">
@@ -2258,6 +2431,49 @@ export default function App() {
                       </h4>
                       <div>
                         <label className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400 block mb-1">定制化博群剖析指示词</label>
+                        
+                        {/* Elegant interactive prompt templates chips */}
+                        <div className="mb-2 flex flex-wrap gap-1.5">
+                          <span className="text-[9.5px] font-bold text-slate-400/80 self-center mr-1">推荐模板:</span>
+                          {[
+                            {
+                              name: "数据汇总与清洗 📊",
+                              desc: "指示 AI 强力进行结构化表格整理输出",
+                              content: "请作为一名数据清洗与整理专家，将我提供的独立博客名单转换为一份非常标准、精细的 Markdown 数据表格。格式要求如下：\n\n| 序号 | 站点名称 | 页面网址 | 定位与简介 | 预估采用的技术与程序 | RSS订阅源评估 |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n\n注：请不要在单元格中包含任何换行符，并且确保每行数据都以正确的管道符 | 包裹。表格之后，请给出 3 条关于这圈独立博群的内容广度、活跃度以及圈子紧密度的智能诊断结论。"
+                            },
+                            {
+                              name: "老兵研究视角 📜",
+                              desc: "研究开源独立博站精神与技术执着",
+                              content: "请作为一名资深的独立网络与微型出版研究老兵，专注于分析这份名单中的博客是否含有自由软件与开源精神、独立博客的技术执着。着重标出具有深邃思考 and 硬核开发的文章分类，并对个人站长精神的薪火相传做出建设性评价。"
+                            },
+                            {
+                              name: "知识与社群圈子 🌐",
+                              desc: "剖析博主重合写作志趣与演进谱系",
+                              content: "请专注于分析数据中博主们的写作交会圈，剖析他们的重合写作志趣。划分核心圈子与边缘圈子，输出一个明确的技术演进谱系（如：前端革新派、Rust/Go硬核派、生活观察散文派、AI探索前沿），分析他们共同关心的议题。"
+                            },
+                            {
+                              name: "技术美学与架构 ⚙️",
+                              desc: "分析技术栈、极简主义与架构品味",
+                              content: "请作为一名系统架构师与前端技术美学观察者，通过博客的标题/描述以及网页元数据，智能推演与合理揣测他们所使用的可能的技术栈与工程哲学，分析他们对极简主义、自研静态编译器（Hugo、Hexo、Astro）或自配高密度服务器的不同品位执着。"
+                            },
+                            {
+                              name: "人文生活温情一角 🌸",
+                              desc: "倾注强烈人文关怀与散文温度",
+                              content: "请化身为一个对互联网黄金时代怀有崇高热情的文学爱好者。细心阅读并筛选出这些独立博客中，具有强烈人文关怀、纯日常散文记录、精神自白、或专注于纯粹文字分享的温情一角。深入诊断该写作者群体如何在算法控制的时代保留一席温暖的心灵交汇孤岛。"
+                            }
+                          ].map((tmpl, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setAiApiConfig({ ...aiApiConfig, customPromptPreset: tmpl.content })}
+                              className="px-2 py-1 text-[9.5px] font-bold bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg border border-indigo-100 dark:border-indigo-900/50 cursor-pointer transition-all shrink-0"
+                              title={tmpl.desc}
+                            >
+                              {tmpl.name}
+                            </button>
+                          ))}
+                        </div>
+
                         <textarea
                           rows={6}
                           value={aiApiConfig.customPromptPreset}
@@ -2283,10 +2499,38 @@ export default function App() {
 
                 {/* AI Output markdown board */}
                 <div className="border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-950/65 overflow-hidden transition-colors">
-                  <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center transition-colors">
-                    <span className="text-[11px] font-mono uppercase text-slate-400 font-bold block">
-                      GEMINI DEEP DIAGNOSING GRAPH
-                    </span>
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center transition-colors">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[11px] font-mono uppercase text-slate-400 font-bold block shrink-0">
+                        GEMINI DEEP DIAGNOSING GRAPH
+                      </span>
+                      {aiReport && aiParsedTables.length > 0 && (
+                        <div className="flex bg-slate-200/60 dark:bg-slate-800/80 p-0.5 rounded-lg shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setAiReportSubTab('table')}
+                            className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${
+                              aiReportSubTab === 'table'
+                                ? 'bg-white dark:bg-slate-700 text-slate-950 dark:text-white shadow-xs'
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer'
+                            }`}
+                          >
+                            📊 整理后的数据表格
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAiReportSubTab('report')}
+                            className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${
+                              aiReportSubTab === 'report'
+                                ? 'bg-white dark:bg-slate-700 text-slate-950 dark:text-white shadow-xs'
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer'
+                            }`}
+                          >
+                            📝 原始深度诊断
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     {aiReport && (
                       <button
                         onClick={() => {
@@ -2301,9 +2545,17 @@ export default function App() {
                   </div>
                   <div className="p-6 md:p-8 text-sm leading-relaxed text-slate-700 dark:text-slate-200 min-h-[250px] relative">
                     {aiReport ? (
-                      <div className="markdown-body prose dark:prose-invert max-w-none space-y-4">
-                        <Markdown>{aiReport}</Markdown>
-                      </div>
+                      aiReportSubTab === 'table' && aiParsedTables.length > 0 ? (
+                        <div className="space-y-4">
+                          {aiParsedTables.map((tbl, idx) => (
+                            <AiTableViewer key={idx} table={tbl} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="markdown-body prose dark:prose-invert max-w-none space-y-4">
+                          <Markdown>{aiReport}</Markdown>
+                        </div>
+                      )
                     ) : (
                       <div className="absolute inset-0 flex flex-col justify-center items-center text-slate-400 pointer-events-none p-10 select-text">
                         <Sparkles className="w-10 h-10 mb-3 stroke-[1.2] text-slate-400 dark:text-slate-600 animate-pulse" />
@@ -2473,6 +2725,90 @@ export default function App() {
             blog={selectedBlog}
             onClose={() => setSelectedBlog(null)}
           />
+        )}
+
+        {confirmModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 font-sans">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.6 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmModal(null)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-xs cursor-pointer"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl max-w-sm w-full relative z-10 space-y-4"
+            >
+              <div className="flex gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="text-slate-900 dark:text-white text-sm font-bold">{confirmModal.title}</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">{confirmModal.message}</p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal(null)}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    confirmModal.onConfirm();
+                    setConfirmModal(null);
+                  }}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 hover:scale-[1.02] active:scale-[0.98] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-red-500/10 cursor-pointer"
+                >
+                  确认
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {customAlert && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 font-sans">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.6 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setCustomAlert(null)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-xs cursor-pointer"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl max-w-sm w-full relative z-10 space-y-4"
+            >
+              <div className="flex gap-3">
+                <div className="w-10 h-10 rounded-full bg-indigo-505/10 bg-indigo-500/10 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-5 h-5 text-indigo-500" />
+                </div>
+                <div>
+                  <h3 className="text-slate-900 dark:text-white text-sm font-bold">{customAlert.title}</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">{customAlert.message}</p>
+                </div>
+              </div>
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCustomAlert(null)}
+                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-950 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  我知道了
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
 
         {showCompareDrawer && (
@@ -2669,3 +3005,103 @@ export default function App() {
     </div>
   );
 }
+
+function AiTableViewer({ table }: { table: { headers: string[]; rows: string[][] } }) {
+  const [search, setSearch] = useState("");
+
+  const filteredRows = useMemo(() => {
+    if (!search.trim()) return table.rows;
+    const lower = search.toLowerCase();
+    return table.rows.filter(row => 
+      row.some(cell => cell.toLowerCase().includes(lower))
+    );
+  }, [table.rows, search]);
+
+  const handleExportCSV = () => {
+    const headersLine = table.headers.map(h => `"${h.replace(/"/g, '""')}"`).join(",");
+    const rowsLines = table.rows.map(row => 
+      row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(",")
+    );
+    const csvContent = "\ufeff" + [headersLine, ...rowsLines].join("\n"); // Include BOM for proper Excel display
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `AI_数据整理表格_${Date.now()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-3.5 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-900/30">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+          <input
+            type="text"
+            placeholder="搜索整理出的表格行..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/10"
+          />
+        </div>
+        <div className="flex items-center gap-2 justify-between">
+          <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 px-2 py-1 rounded-md font-bold font-mono">
+            共 {filteredRows.length} 条数据
+          </span>
+          <button
+            onClick={handleExportCSV}
+            className="px-2.5 py-1.5 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800/80 rounded-xl text-[10.5px] font-bold flex items-center gap-1 cursor-pointer transition-all"
+          >
+            <Download className="w-3 text-slate-500" />
+            导出此表 (CSV)
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-xs max-h-[400px] overflow-y-auto">
+        <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-850 text-xs">
+          <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800/80 sticky top-0 z-10 text-slate-500 dark:text-slate-400">
+            <tr>
+              {table.headers.map((h, i) => (
+                <th key={i} className="px-4 py-3 text-left font-bold tracking-tight text-[11px] uppercase shrink-0 whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-850 bg-white dark:bg-slate-950/30">
+            {filteredRows.length > 0 ? (
+              filteredRows.map((row, rIdx) => (
+                <tr key={rIdx} className="hover:bg-slate-50/70 dark:hover:bg-slate-900/30 transition-colors">
+                  {row.map((cell, cIdx) => (
+                    <td key={cIdx} className="px-4 py-3 max-w-sm truncate whitespace-nowrap text-slate-700 dark:text-slate-300 antialiased font-normal" title={cell}>
+                      {/^(https?:\/\/)/i.test(cell) ? (
+                        <a
+                          href={cell}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 inline-flex"
+                        >
+                          <Globe className="w-3 h-3 shrink-0 text-slate-400" />
+                          <span className="truncate">{cell}</span>
+                        </a>
+                      ) : cell}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={table.headers.length} className="px-4 py-8 text-center text-slate-400 font-bold">
+                  没有找到匹配该关键词的过滤项
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+

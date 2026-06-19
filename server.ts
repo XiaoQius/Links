@@ -381,6 +381,46 @@ ${JSON.stringify(sampleBlogs, null, 2)}
   }
 });
 
+// Endpoint to check single URL connectivity / accessibility
+app.post("/api/check-connectivity", async (req: express.Request, res: express.Response): Promise<any> => {
+  const { url } = req.body;
+  if (!url) {
+    return res.status(400).json({ success: false, error: "Missing url" });
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 seconds timeout
+
+    const response = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 independent-blog-crawler-checker",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+      }
+    });
+    clearTimeout(timeoutId);
+
+    return res.status(200).json({
+      success: true,
+      ok: response.status >= 200 && response.status < 400,
+      statusCode: response.status,
+      statusText: response.statusText
+    });
+  } catch (err: any) {
+    let errMsg = err.message || "Connection failed";
+    if (err.name === "AbortError") {
+      errMsg = "连接超时 (6s)";
+    }
+    return res.status(200).json({
+      success: false,
+      ok: false,
+      error: errMsg
+    });
+  }
+});
+
 // Vite & Static Asset Handling
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {

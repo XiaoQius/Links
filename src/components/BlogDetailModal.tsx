@@ -85,6 +85,31 @@ export default function BlogDetailModal({ blog, onClose }: BlogDetailModalProps)
             </div>
           </div>
 
+          {/* Site Connectivity Status Banner */}
+          {blog.status === "success" && blog.connectivity && (
+            <div className={`border rounded-xl p-3.5 flex items-center justify-between gap-3 text-xs ${
+              blog.connectivity.status === 'ok'
+                ? 'bg-emerald-500/5 text-emerald-800 dark:text-emerald-400 border-emerald-500/15'
+                : blog.connectivity.status === 'checking'
+                ? 'bg-amber-500/5 text-amber-800 dark:text-amber-400 border-amber-500/15 animate-pulse'
+                : 'bg-rose-500/5 text-rose-800 dark:text-rose-400 border-rose-500/15'
+            }`}>
+              <div className="space-y-0.5">
+                <span className="text-[10px] text-slate-400 dark:text-slate-505 uppercase font-bold tracking-wider block">可达性诊断 (Acessibility Diagnosing)</span>
+                <span className="font-bold text-slate-800 dark:text-slate-100 block">
+                  {blog.connectivity.status === 'ok' ? '✅ 运转正常 (200 OK)：网络层连通无阻，内容加载流畅' :
+                   blog.connectivity.status === 'checking' ? '⚡ 正在探测：正在尝试拨测该服务器的可解析响应...' :
+                   `⚠️ 访问阻塞：目标主机无法握手 (${blog.connectivity.error || '请求响应超时'})`}
+                </span>
+              </div>
+              {blog.connectivity.checkedTime && (
+                <span className="text-[9.5px] text-slate-400 dark:text-slate-500 font-mono whitespace-nowrap shrink-0 align-bottom self-end">
+                  核验: {new Date(blog.connectivity.checkedTime).toLocaleTimeString()}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* HTML Title & description */}
           <div className="space-y-3">
             <div>

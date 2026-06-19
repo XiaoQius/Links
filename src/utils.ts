@@ -187,3 +187,81 @@ export function triggerFileDownload(content: string, fileName: string, contentTy
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// Markdown table parser for extracting AI-generated structured tables
+export interface ParsedTable {
+  headers: string[];
+  rows: string[][];
+}
+
+export function parseMarkdownTables(text: string): ParsedTable[] {
+  if (!text) return [];
+  const lines = text.split("\n");
+  const tables: ParsedTable[] = [];
+  let currentTableLines: string[] = [];
+  let inTable = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    // A markdown table line usually starts and ends with '|'
+    const isTableLine = trimmed.startsWith("|") && trimmed.endsWith("|") && trimmed.length > 2;
+
+    if (isTableLine) {
+      inTable = true;
+      currentTableLines.push(trimmed);
+    } else {
+      if (inTable && currentTableLines.length >= 2) {
+        processTable(currentTableLines, tables);
+      }
+      inTable = false;
+      currentTableLines = [];
+    }
+  }
+
+  // Handle case where table is at the very end of text
+  if (inTable && currentTableLines.length >= 2) {
+    processTable(currentTableLines, tables);
+  }
+
+  return tables;
+}
+
+function processTable(tableLines: string[], tablesList: ParsedTable[]) {
+  try {
+    // Parse header cells
+    const rawHeaders = tableLines[0]
+      .split("|")
+      .map(s => s.trim())
+      .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+    
+    // Check if second line is a separator line (contains dashes and colons)
+    const secondLine = tableLines[1];
+    const isSeparator = /^[|:\s-]+$/.test(secondLine);
+    
+    let startIndex = 1;
+    if (isSeparator && tableLines.length > 2) {
+      startIndex = 3; // Start from data (headers is 0, divider is 1 or 2 sometimes if multiple dividers present)
+      // Usually index 0 = header, 1 = separator, index 2 is first data row
+      startIndex = 2;
+    }
+
+    const rows: string[][] = [];
+    for (let i = startIndex; i < tableLines.length; i++) {
+      const rawCells = tableLines[i]
+        .split("|")
+        .map(s => s.trim())
+        .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+      
+      if (rawCells.length > 0) {
+        rows.push(rawCells);
+      }
+    }
+
+    if (rawHeaders.length > 0 && rows.length > 0) {
+      tablesList.push({ headers: rawHeaders, rows });
+    }
+  } catch (err) {
+    console.warn("Error processing markdown table in parser:", err);
+  }
+}
+
